@@ -1,17 +1,22 @@
 from socket import socket, AF_INET, SOCK_STREAM, SOCK_DGRAM
 from threading import Thread
 from io import BytesIO, SEEK_SET, SEEK_END
-
+from shutil import disk_usage
 
 NOT_CONNECTED=0
 CONNECTED=1
 CONNECTING=2
 
 class ConnectionHandler:
+    """ 
+    Handler for basic networking acions.
+    """
+
     def __init__(self) -> None:
         self.connection = {'status' : NOT_CONNECTED}
 
     def host(self, ip: str, port: int) -> socket:
+        """ Host and listen on IP:PORT. Returns created socket. """
         sock = socket(AF_INET, SOCK_STREAM)
         sock.bind((ip, port))
         sock.settimeout(10)
@@ -19,12 +24,13 @@ class ConnectionHandler:
         return sock
     
     def accept_connection_from(self, app, sock: socket, ip: str) -> None:
+        """ Accept connection from IP. """
 
         def wait_for_connection(app, sock: socket, ip: str) -> None:
             try:
                 conn, addr = sock.accept()
                 if addr[0] == ip:
-                    app.sock = conn
+                    app.socket = conn
                     app.show_transfer_ui()
                     self.connection['status'] = CONNECTED
             except Exception as e:
@@ -33,15 +39,16 @@ class ConnectionHandler:
 
         if self.connection['status'] != CONNECTING:
             self.connection['status'] = CONNECTING
-            thread = Thread(target=wait_for_connection, args=(app, sock, ip, self.connection))
+            thread = Thread(target=wait_for_connection, args=(app, sock, ip))
             thread.start()
 
     def connect_to_host(self, app, ip: str, port: int) -> None:
+        """ Connect to IP:PORT. """
 
-        def wait_for_connection(app, ip: str, port: int, connection: dict) -> None:
+        def wait_for_connection(app, ip: str, port: int) -> None:
             try:
-                app.sock = socket(AF_INET, SOCK_STREAM)
-                app.sock.connect((ip, port))
+                app.socket = socket(AF_INET, SOCK_STREAM)
+                app.socket.connect((ip, port))
                 app.show_file_ui()
                 self.connection['status'] = CONNECTED
             except Exception as e:
@@ -50,10 +57,11 @@ class ConnectionHandler:
         
         if self.connection['status'] != CONNECTING:
             self.connection['status'] = CONNECTING
-            thread = Thread(target=wait_for_connection, args=(app, ip, port, self.connection))
+            thread = Thread(target=wait_for_connection, args=(app, ip, port))
             thread.start()
             
     def get_host_ip(self) -> str:
+        """ Get the IP of the host. """
         sock = socket(AF_INET, SOCK_DGRAM)
         sock.connect(('8.8.8.8', 1))
         ip = sock.getsockname()[0]
@@ -61,6 +69,7 @@ class ConnectionHandler:
         return ip
 
     def send_file(self, sock: socket, file) -> None:
+        """ Send the file to the receiver. """
         file_name: str = file.name.split('/')[-1]
         file.seek(0, SEEK_END)
         size = file.tell()
@@ -86,6 +95,7 @@ class ConnectionHandler:
         sock.close()
 
     def recv_file(self, sock: socket) -> None:
+        """ Receive the file and write it on disk. """
 
         def recv_n_bytes(sock: socket, bytes_to_recv: int) -> bytes:
             buf = BytesIO()
@@ -102,6 +112,10 @@ class ConnectionHandler:
         file_name_length = int.from_bytes(recv_n_bytes(sock, 16), 'little')
         file_name = recv_n_bytes(sock, file_name_length).decode()
         file_size = int.from_bytes(recv_n_bytes(sock, 16), 'little')
+        
+        _, _, free_space = disk_usage('.')
+        if file_size > free_space:
+            raise Exception('Not enough space to receive the file')
         
         with open(file_name, 'wb+') as out:
             while True:
