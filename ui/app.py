@@ -135,7 +135,8 @@ class App:
         if 'error-label' in self.root.children:
             self.root.children['error-label'].destroy()
 
-        error_label = Label(self.root.children['main-frame'], text=error, name='error-label', foreground='red', wraplength=200)
+        error_label = Label(self.root.children['main-frame'], text=error,
+                            name='error-label', foreground='red', wraplength=200)
         error_label.pack(pady=9)
 
         error_label.after(8500, error_label.destroy)

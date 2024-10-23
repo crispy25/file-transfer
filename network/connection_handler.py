@@ -22,7 +22,7 @@ class ConnectionHandler:
         sock.settimeout(10)
         sock.listen()
         return sock
-    
+
     def accept_connection_from(self, app, sock: socket, ip: str) -> None:
         """ Accept connection from IP. """
 
@@ -54,12 +54,12 @@ class ConnectionHandler:
             except Exception as e:
                 self.connection['status'] = NOT_CONNECTED
                 app.show_error("Couldn't connect to receiver: " + str(e))
-        
+
         if self.connection['status'] != CONNECTING:
             self.connection['status'] = CONNECTING
             thread = Thread(target=wait_for_connection, args=(app, ip, port))
             thread.start()
-            
+
     def get_host_ip(self) -> str:
         """ Get the IP of the host. """
         sock = socket(AF_INET, SOCK_DGRAM)
@@ -112,11 +112,11 @@ class ConnectionHandler:
         file_name_length = int.from_bytes(recv_n_bytes(sock, 16), 'little')
         file_name = recv_n_bytes(sock, file_name_length).decode()
         file_size = int.from_bytes(recv_n_bytes(sock, 16), 'little')
-        
+
         _, _, free_space = disk_usage('.')
         if file_size > free_space:
             raise Exception('Not enough space to receive the file')
-        
+
         with open(file_name, 'wb+') as out:
             while True:
                 data = sock.recv(1024)

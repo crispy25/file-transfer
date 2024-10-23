@@ -1,5 +1,5 @@
 from network.connection_handler import ConnectionHandler
-from app.app import App
+from ui.app import App
 
 app = App(ConnectionHandler())
 
